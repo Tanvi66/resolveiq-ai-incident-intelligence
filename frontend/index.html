@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ResolveIQ</title>
+<style>
+body{font-family:Inter,Arial,sans-serif;margin:0;background:#f6f8fb;color:#172033}
+header{background:#111827;color:white;padding:22px 5vw}
+main{max-width:1200px;margin:30px auto;padding:0 20px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.card{background:white;border-radius:16px;padding:20px;box-shadow:0 3px 14px #0000000d}
+.metric{font-size:30px;font-weight:700;margin-top:8px}
+table{width:100%;border-collapse:collapse;background:white;border-radius:16px;overflow:hidden}
+th,td{text-align:left;padding:14px;border-bottom:1px solid #edf0f4}
+.badge{padding:5px 9px;border-radius:999px;background:#eef2ff}
+input{width:70%;padding:13px;border:1px solid #d8dee8;border-radius:10px}
+button{padding:13px 18px;border:0;border-radius:10px;background:#111827;color:white;cursor:pointer}
+.answer{margin-top:14px;padding:14px;background:#eef6ff;border-radius:10px}
+@media(max-width:800px){.grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header><h1>ResolveIQ</h1><div>AI Incident Intelligence & SLA Risk Copilot</div></header>
+<main>
+<div class="grid" id="metrics"></div>
+<h2>Priority Incidents</h2>
+<table><thead><tr><th>ID</th><th>Service</th><th>Priority</th><th>Status</th><th>Impact</th><th>SLA Risk</th></tr></thead><tbody id="rows"></tbody></table>
+<h2>Ask ResolveIQ</h2>
+<input id="q" placeholder="Which incidents are most likely to breach SLA?">
+<button onclick="ask()">Analyze</button>
+<div class="answer" id="answer">Ask a question about the incident data.</div>
+</main>
+<script>
+const API="";
+async function load(){
+ const [s, i]=await Promise.all([fetch(API+"/api/summary").then(r=>r.json()),fetch(API+"/api/incidents").then(r=>r.json())]);
+ document.getElementById("metrics").innerHTML=[
+  ["Open incidents",s.open_incidents],["High SLA risk",s.high_risk],["Customer impact",s.customer_impact],["Top service",s.top_service]
+ ].map(x=>`<div class="card"><div>${x[0]}</div><div class="metric">${x[1]}</div></div>`).join("");
+ document.getElementById("rows").innerHTML=i.map(x=>`<tr><td>${x.incident_id}</td><td>${x.service}</td><td><span class="badge">${x.priority}</span></td><td>${x.status}</td><td>${x.customer_impact}</td><td><b>${x.sla_risk}%</b></td></tr>`).join("");
+}
+async function ask(){
+    const q = document.getElementById("q").value;
+    const button = document.querySelector("button");
+    const answer = document.getElementById("answer");
+    if (!q.trim()) { answer.innerText = "Please enter a question first."; return; }
+    button.disabled = true;
+    button.innerText = "Analyzing...";
+    answer.innerText = "ResolveIQ is analyzing the incident data...";
+    try {
+        const r = await fetch(API + "/api/ask-ai", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q})});
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.detail || "Unable to analyze the request.");
+        answer.innerText = data.answer;
+    } catch (error) {
+        answer.innerText = "Unable to complete the analysis. Please try again.";
+        console.error(error);
+    } finally {
+        button.disabled = false;
+        button.innerText = "Analyze";
+    }
+}
+load();
+</script>
+</body>
+</html>
