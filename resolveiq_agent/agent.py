@@ -6,6 +6,7 @@ from .tools import (
     get_sla_risk,
     get_customer_impact,
     get_recurring_incidents,
+    get_priority_recommendation,
 )
 
 
@@ -39,10 +40,13 @@ IMPORTANT:
   use the customer impact tool.
 - If the user asks about recurring incidents or patterns,
   use the recurring incidents tool.
+- If the user asks which incidents to prioritize, escalate, or act on first,
+  use the priority recommendation tool.
 """,
     tools=[
         get_sla_risk,
         get_customer_impact,
         get_recurring_incidents,
+        get_priority_recommendation,
     ],
 )

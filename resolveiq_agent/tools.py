@@ -110,3 +110,48 @@ def get_recurring_incidents() -> str:
         return "No recurring incident data was found."
 
     return "Most recurring incident patterns:\n" + "\n".join(results)
+
+
+def get_priority_recommendation() -> str:
+    """Recommend which incidents should receive immediate attention.
+    Use this when the user asks which incidents to prioritize,
+    escalate, or act on first.
+    """
+    query = f"""
+    SELECT
+        incident_id,
+        service,
+        priority,
+        status,
+        hours_remaining,
+        customer_impact,
+        risk_score
+    FROM {TABLE}
+    WHERE status != 'Resolved'
+    ORDER BY risk_score DESC, customer_impact DESC
+    LIMIT 5
+    """
+
+    rows = bq_client.query(query).result()
+
+    results = []
+
+    for row in rows:
+        action = "Immediate escalation"
+
+        if row.hours_remaining > 0:
+            action = "Prioritize before SLA breach"
+
+        results.append(
+            f"{row.incident_id}: service={row.service}, "
+            f"priority={row.priority}, status={row.status}, "
+            f"risk={round(row.risk_score, 2)}%, "
+            f"hours_remaining={round(row.hours_remaining, 2)}, "
+            f"impact={row.customer_impact}, "
+            f"recommended_action={action}"
+        )
+
+    if not results:
+        return "No active incidents require prioritization."
+
+    return "Priority recommendations:\n" + "\n".join(results)
