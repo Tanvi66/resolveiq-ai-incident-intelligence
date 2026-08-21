@@ -155,3 +155,64 @@ def get_priority_recommendation() -> str:
         return "No active incidents require prioritization."
 
     return "Priority recommendations:\n" + "\n".join(results)
+
+def get_incident_details(incident_id: str) -> str:
+    """Get detailed information about a specific incident.
+    Use this when the user asks to analyze, investigate, or get details
+    about a specific incident ID.
+    """
+    query = f"""
+    SELECT
+        incident_id,
+        service,
+        priority,
+        status,
+        age_hours,
+        sla_hours,
+        hours_remaining,
+        customer_impact,
+        risk_score,
+        risk_level,
+        category,
+        repeat_count
+    FROM {TABLE}
+    WHERE incident_id = @incident_id
+    LIMIT 1
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter(
+                "incident_id", "STRING", incident_id
+            )
+        ]
+    )
+
+    rows = bq_client.query(
+        query,
+        job_config=job_config
+    ).result()
+
+    for row in rows:
+        action = "Immediate escalation"
+
+        if row.hours_remaining > 0:
+            action = "Prioritize before SLA breach"
+
+        return (
+            f"Incident: {row.incident_id}\n"
+            f"Service: {row.service}\n"
+            f"Priority: {row.priority}\n"
+            f"Status: {row.status}\n"
+            f"Category: {row.category}\n"
+            f"Age: {round(row.age_hours, 2)} hours\n"
+            f"SLA: {round(row.sla_hours, 2)} hours\n"
+            f"Hours remaining: {round(row.hours_remaining, 2)}\n"
+            f"Customer impact: {row.customer_impact}\n"
+            f"SLA risk: {round(row.risk_score, 2)}%\n"
+            f"Risk level: {row.risk_level}\n"
+            f"Repeat count: {row.repeat_count}\n"
+            f"Recommended action: {action}"
+        )
+
+    return f"No incident was found with ID {incident_id}."
